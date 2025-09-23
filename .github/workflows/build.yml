@@ -90,11 +90,12 @@ jobs:
       name: Make Install
       run: |
         cat <<EOF > run.sh
-        export GRC_BLOCKS_PATH="$(pwd)/share/gnuradio/grc/blocks"
-        export PATH="$PATH:$(pwd)/bin"
+        #!/bin/bash
+        export GRC_BLOCKS_PATH="\$(pwd)/share/gnuradio/grc/blocks"
+        export PATH="\$PATH:\$(pwd)/bin"
         
         cd bin && \
-        $(pwd)/python.exe gnuradio-companion.py
+        \$(pwd)/python.exe gnuradio-companion.py
         EOF
 
     # - run: |
