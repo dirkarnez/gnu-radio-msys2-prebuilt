@@ -1,0 +1,123 @@
+name: msys2-build-action-workflow
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'c*'
+      
+permissions:
+    contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    name: MinGW-w64
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          git
+          make
+        pacboy: >-
+          toolchain:p
+          cmake:p
+          ninja:p
+          boost:p
+          cppzmq:p
+          fftw:p
+          gsl:p
+          gsm:p
+          gtk3:p
+          jack2:p
+          libsndfile:p
+          libunwind:p
+          pango:p
+          portaudio:p
+          pybind11:p
+          python:p
+          python-click:p
+          python-gobject:p
+          python-jsonschema:p
+          python-mako:p
+          python-numpy:p
+          python-pip:p
+          python-pyqt5:p
+          python-pyzmq:p
+          python-matplotlib:p
+          python-yaml:p
+          qt5-base:p
+          qwt-qt5:p
+          SDL:p
+          soapysdr:p
+          spdlog:p
+          thrift:p
+          volk:p
+          sccache:p
+          
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        repository: 'gnuradio/gnuradio'
+        ref: 'v3.10.12.0'
+        path: 'gnuradio'
+      
+    - working-directory: ./gnuradio
+      name: CMake
+      run: |
+        cmake -S . -B cmake-build -DCMAKE_INSTALL_PREFIX=${RUNNER_TEMP}/msys64/mingw64 -DENABLE_DOXYGEN=OFF
+          
+    - working-directory: ./gnuradio
+      name: Make
+      run: cmake --build cmake-build
+      
+    - working-directory: ./gnuradio
+      name: Make Install
+      run: cmake --install cmake-build
+
+    - name: Set installation directory
+      id: set-installation-directory
+      run: |
+        echo "INSTALLATION_DIR=${RUNNER_TEMP}/msys64/mingw64" >> "$GITHUB_OUTPUT"
+
+    - working-directory: '${{ steps.set-installation-directory.outputs.INSTALLATION_DIR }}'
+      name: Make Install
+      run: |
+        cat <<EOF > run.sh
+        export GRC_BLOCKS_PATH="$(pwd)/share/gnuradio/grc/blocks"
+        export PATH="$PATH:$(pwd)/bin"
+        
+        cd bin && \
+        $(pwd)/python.exe gnuradio-companion.py
+        EOF
+
+    # - run: |
+    #     cp ${RUNNER_TEMP}/msys64/mingw64/bin/libgcc_s_seh-1.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libstdc++-6.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libboost_program_options-mt.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libwinpthread-1.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libboost_program_options-mt.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libfmt-11.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libboost_thread-mt.dll \
+    #     ${RUNNER_TEMP}/msys64/mingw64/bin/libgmp-10.dll \
+    #     ./gnuradio/cmake-build/cmake-installation/bin/
+        
+    - name: Archive Release
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        directory: "${{ steps.set-installation-directory.outputs.INSTALLATION_DIR }}"
+        filename: "${{ github.event.repository.name }}-${{ github.ref_name }}.zip"
+        
+    - name: Release prebuilt
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "${{ steps.set-installation-directory.outputs.INSTALLATION_DIR }}/${{ github.event.repository.name }}-${{ github.ref_name }}.zip"
+        allowUpdates: true
+        token: ${{ secrets.GITHUB_TOKEN }}
