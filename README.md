@@ -11,3 +11,4 @@ Prebuilt of [gnuradio/gnuradio: GNU Radio – the Free and Open Software Radio E
 
 ### Alternatives
 - [radioconda/radioconda-installer: Software radio distribution and installer for conda](https://github.com/radioconda/radioconda-installer)
+- [bastibl/instant-gnuradio: Customizable GNU Radio Environment for Live Images and VMs](https://github.com/bastibl/instant-gnuradio)
